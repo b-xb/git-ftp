@@ -34,6 +34,7 @@ REMOTE_PROTOCOL=""
 REMOTE_HOST=""
 REMOTE_USER=""
 REMOTE_PASSWD=""
+REMOTE_LOGIN=""
 REMOTE_BASE_URL=""
 REMOTE_BASE_URL_DISPLAY=""
 REMOTE_ROOT=""
@@ -472,7 +473,9 @@ upload_file() {
 	CURL_ARGS+=(-T "$SRC_FILE")
 	CURL_ARGS+=(--ftp-create-dirs)
 	CURL_ARGS+=("$REMOTE_BASE_URL/${REMOTE_PATH}${DEST_FILE}")
-	curl "${CURL_ARGS[@]}"
+        CURL_ARGS+=("--user")
+        CURL_ARGS+=("$REMOTE_LOGIN")
+        curl "${CURL_ARGS[@]}"
 }
 
 upload_file_buffered() {
@@ -491,7 +494,9 @@ fire_upload_buffer() {
 	set_default_curl_options
 	CURL_ARGS+=(--ftp-create-dirs)
 	CURL_ARGS+=(-K "$TMP_CURL_UPLOAD_FILE")
-	curl "${CURL_ARGS[@]}"
+        CURL_ARGS+=("--user")
+        CURL_ARGS+=("$REMOTE_LOGIN")
+        curl "${CURL_ARGS[@]}"
 	check_exit_status "Could not upload files." "$ERROR_UPLOAD"
 }
 
@@ -500,7 +505,9 @@ delete_file() {
 	set_default_curl_options
 	CURL_ARGS+=(-Q "${REMOTE_DELETE_CMD}${REMOTE_PATH}${FILENAME}")
 	CURL_ARGS+=("$REMOTE_BASE_URL")
-	if [ "${REMOTE_CMD_OPTIONS[0]}" = "-v" ]; then
+        CURL_ARGS+=("--user")
+        CURL_ARGS+=("$REMOTE_LOGIN")
+        if [ "${REMOTE_CMD_OPTIONS[0]}" = "-v" ]; then
 		curl "${CURL_ARGS[@]}"
 	else
 		curl "${CURL_ARGS[@]}" > /dev/null 2>&1
@@ -522,7 +529,9 @@ fire_delete_buffer() {
 	echo "url = $REMOTE_BASE_URL" >> "$TMP_CURL_DELETE_FILE"
 	set_default_curl_options
 	CURL_ARGS+=(-K "$TMP_CURL_DELETE_FILE")
-	if [ "${REMOTE_CMD_OPTIONS[0]}" = "-v" ]; then
+        CURL_ARGS+=("--user")
+        CURL_ARGS+=("$REMOTE_LOGIN")
+        if [ "${REMOTE_CMD_OPTIONS[0]}" = "-v" ]; then
 		curl "${CURL_ARGS[@]}"
 	else
 		curl "${CURL_ARGS[@]}" > /dev/null 2>&1
@@ -536,7 +545,9 @@ get_file_content() {
 	local SRC_FILE="$1"
 	set_default_curl_options
 	CURL_ARGS+=("$REMOTE_BASE_URL/${REMOTE_PATH}${SRC_FILE}")
-	curl "${CURL_ARGS[@]}"
+        CURL_ARGS+=("--user")
+        CURL_ARGS+=("$REMOTE_LOGIN")
+        curl "${CURL_ARGS[@]}"
 }
 
 set_local_sha1() {
@@ -1103,13 +1114,12 @@ set_remotes() {
 		write_log "Password is set."
 	fi
 
-	local REMOTE_LOGIN=''
 	local DISPLAY_LOGIN=''
 	if [ ! -z "$REMOTE_USER" ]; then
 		local ENC_USER="$(urlencode "$REMOTE_USER")"
 		local ENC_PASSWD="$(urlencode "$REMOTE_PASSWD")"
-		REMOTE_LOGIN="$ENC_USER":"$ENC_PASSWD"@
-		DISPLAY_LOGIN="$ENC_USER":'***'@
+		REMOTE_LOGIN="$REMOTE_USER":"$ENC_PASSWD"
+		DISPLAY_LOGIN="$REMOTE_USER":'***'
 	fi
 
 	set_remote_cacert
@@ -1128,8 +1138,8 @@ set_remotes() {
 	set_remote_path
 	write_log "Path is '$REMOTE_PATH'."
 
-	REMOTE_BASE_URL="$CURL_PROTOCOL://$REMOTE_LOGIN$REMOTE_HOST"
-	REMOTE_BASE_URL_DISPLAY="$REMOTE_PROTOCOL://$DISPLAY_LOGIN$REMOTE_HOST"
+	REMOTE_BASE_URL="$CURL_PROTOCOL://$REMOTE_HOST"
+	REMOTE_BASE_URL_DISPLAY="$REMOTE_PROTOCOL://$REMOTE_HOST"
 
 	set_deployed_sha1_file
 	write_log "The remote sha1 is saved in file '$DEPLOYED_SHA1_FILE'."
@@ -1443,7 +1453,9 @@ check_remote_access() {
 	set_default_curl_options
 	CURL_ARGS+=(--ftp-create-dirs)
 	CURL_ARGS+=("$REMOTE_BASE_URL/$REMOTE_PATH")
-	curl "${CURL_ARGS[@]}" > /dev/null
+        CURL_ARGS+=("--user")
+        CURL_ARGS+=("$REMOTE_LOGIN")
+        curl "${CURL_ARGS[@]}" > /dev/null
 	
 	local EXIT_CODE=$?
 	if [ "$REMOTE_PROTOCOL" == "sftp" ] && [ $EXIT_CODE -eq 78 ]; then
